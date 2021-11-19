@@ -5,6 +5,7 @@ from envparse import env
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+env.read_envfile(BASE_DIR.parent / 'conf.env')
 
 SECRET_KEY = env.str('SECRET_KEY')
 DEBUG = env.bool('DEBUG')
@@ -18,6 +19,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    'movies',
+    
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
