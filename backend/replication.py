@@ -283,7 +283,7 @@ if __name__ == '__main__':
                         IMPORT_DB[i]['name']
                     )
                 except Exception as E:
-                    print(E)
+                    print(print(f'[Extraction error] {E}'))
                         
             print(f'[Table {table}] ... extracted!')   
                 
@@ -294,6 +294,6 @@ if __name__ == '__main__':
                 movie.actors.add(actor)
                 movie.save()
             except Exception as E:
-                print(E)
+                print(f'[Extraction error] {E}')
 
         print(f'[Table movie_actors] ... extracted!')

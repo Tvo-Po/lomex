@@ -4,7 +4,6 @@ services:
   
   backend:
     build: ./backend
-    command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./backend/:/usr/src/lomex/
     ports:
@@ -18,7 +17,7 @@ services:
   db:
     image: postgres:13.0-alpine
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
+      - ./postgres_data:/var/lib/postgresql/data/
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -33,6 +32,7 @@ services:
       - "8080:8080"
     depends_on:
       - backend
+      - db
     container_name: vue_frontend
 
 volumes:
