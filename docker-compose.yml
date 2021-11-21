@@ -25,14 +25,13 @@ services:
     container_name: postgres_db
   vue:
     build: ./frontend
-    command: npm run serve
     volumes:
       - ./frontend/:/usr/src/lomex/
+      - /usr/src/lomex/node_modules
     ports:
       - "8080:8080"
     depends_on:
       - backend
-      - db
     container_name: vue_frontend
 
 volumes:
