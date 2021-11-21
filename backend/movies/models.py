@@ -28,14 +28,12 @@ class Genre(models.Model):
 
 class Movie(models.Model):
      
-    id = models.CharField(primary_key=True, max_length=9)
+    id = models.CharField(primary_key=True, max_length=10)
     title = models.CharField(max_length=150)
     imdb_rating = models.DecimalField(max_digits=2, decimal_places=1)
-    description = models.TextField()
+    description = models.TextField(blank=True)
     genres = models.ManyToManyField('Genre', related_name='movies')
-    director = models.ForeignKey('Director', on_delete=SET_NULL,
-                                    blank=True, null=True,
-                                    related_name='movies')
+    directors = models.ManyToManyField('Director', related_name='movies')
     writers = models.ManyToManyField('Writer', related_name='movies')
     actors = models.ManyToManyField('Actor', related_name='movies')
     
@@ -46,7 +44,7 @@ class Movie(models.Model):
         self.id = self.id.replace(' ', '')
         if len(self.id) < 9:
             raise ValidationError(
-                {'id': 'ID should be 9 symbols lenght without spaces'}
+                {'id': 'ID should be at least 9 symbols lenght without spaces'}
             )
         if self.id[:2] != 'tt':
             raise ValidationError(

@@ -1,5 +1,5 @@
 from django.db.models import Avg, Count, Value
-from django.db.models.functions import Concat
+from django.db.models.functions import Concat, Round
 
 from rest_framework import serializers
 
@@ -18,8 +18,9 @@ class MovieGenreStatisticSerializer(serializers.ModelSerializer):
         return genre.movies.count()
     
     def get_avg_rating(self, genre):
+        f_expression_for_rounded_rating = Round(Avg('imdb_rating') * 10) / 10
         return genre.movies.aggregate(
-            avg_rate=Avg('imdb_rating')
+            avg_rate=f_expression_for_rounded_rating
         )['avg_rate']
 
 

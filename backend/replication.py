@@ -14,19 +14,29 @@ from json import loads as structurize
 from movies.models import Actor, Writer, Director, Genre, Movie
 
 
+def check_null(obj):
+    if not isinstance(obj, str):
+        return obj
+    if not obj.find('N/A') == -1:
+        return None
+    return obj
+
+
 def process_name(full_name: str) -> tuple:
+    full_name = full_name.replace(',', '')
+    full_name = full_name.replace("'", '')
     full_name = full_name.split()
-    if len(full_name) < 2:
+    if not full_name:
         raise ValueError(
-            'Full name must contain at least first name and last_name'
+            'Empty name'
         )
     first_name = full_name[0]
-    middle_name = full_name[1:-1]
+    if len(full_name) == 1:
+        last_name = ''
+    middle_name = ' '.join(full_name[1:-1])
     last_name = full_name[-1]
     if not middle_name:
         middle_name = ''
-    else:
-        middle_name = middle_name[0]
     return first_name, middle_name, last_name
 
 
@@ -54,21 +64,22 @@ def process_genre(genres: str) -> dict:
     return genres
 
 
-def process_director(director: str):
-    if director == 'N/A':
-        return None
-    else:
+def process_directors(directors: str):
+    m2m_directors = []
+    directors = directors.split(',')
+    for director in directors:
         names = process_name(director)
-        return Director.objects.get_or_create(
+        director = Director.objects.get_or_create(
             first_name=names[0],
             middle_name=names[1],
             last_name=names[2],
         )[0]
+        m2m_directors.append(director)
+    directors = {'m2m': m2m_directors}
+    return directors
 
 
 def process_writers(writers):
-    if not writers:
-        return None
     m2m_writers = []
     if writers[0] == '[':
         struct_writers = structurize(writers)
@@ -122,7 +133,7 @@ class CleanDataFromTableRow:
         'name': process_name,
         'uuid': process_uuid,
         'genre': process_genre,
-        'director': process_director,
+        'directors': process_directors,
         'writers': process_writers,
     }
     
@@ -133,19 +144,22 @@ class CleanDataFromTableRow:
     
     def _clean_fields(self):
         for field in self.__fields:
+            if field['type'] == 'redudant':
+                continue
+            value = check_null(field['value'])
+            if not value:
+                self.__cleaned_fields.append(value)
+                continue
             process_function = self.__field_procesors.get(
                 field['type']
             )
-            if field['type'] == 'redudant':
-                continue
             if not process_function:
-                self.__cleaned_fields.append(
-                    field['value']
-                )
+                self.__cleaned_fields.append(value)
                 continue
-            cleaned_field = process_function(
-                field['value']
-            )
+            try:
+                cleaned_field = process_function(value)
+            except Exception:
+                cleaned_field = None
             if isinstance(cleaned_field, tuple):
                 self.__cleaned_fields.extend(
                     cleaned_field
@@ -189,6 +203,8 @@ class LoadDataToDjangoDataBase:
 
 if __name__ == '__main__':
     
+    CHECK_AMOUNT = 100
+    
     EXPORT_DB = {
         'actors': [
             {'field_type': 'simple_id'},
@@ -201,7 +217,7 @@ if __name__ == '__main__':
         'movies': [
             {'field_type': 'movie_id'},
             {'field_type': 'genre'},
-            {'field_type': 'director'},
+            {'field_type': 'directors'},
             {'field_type': 'writers'},
             {'field_type': 'title'},
             {'field_type': 'text'},
@@ -235,7 +251,7 @@ if __name__ == '__main__':
             'fields': [
                 'id',
                 'genres',
-                'director',
+                'directors',
                 'writers',
                 'title',
                 'description',
@@ -245,36 +261,39 @@ if __name__ == '__main__':
         }
     ]
     
-    for i, table in enumerate(EXPORT_DB):
-        for row in ExtractTableData(table):
+    if Movie.objects.count() > 100:
+        print('Data already extracted!')
+    else:
+        for i, table in enumerate(EXPORT_DB):
+            for row in ExtractTableData(table):
+                try:
+                    row_properties = []
+                    for j in range(len(EXPORT_DB[table])):
+                        row_properties.append({
+                            'type': EXPORT_DB[table][j]['field_type'],
+                            'value': row[j],
+                        })
+                    row_cleaner = CleanDataFromTableRow(
+                        *row_properties
+                    )
+                    cleaned_row = row_cleaner.data
+                    db_load = LoadDataToDjangoDataBase()
+                    db_load.create_instance(
+                        cleaned_row, IMPORT_DB[i]['fields'],
+                        IMPORT_DB[i]['name']
+                    )
+                except Exception as E:
+                    print(E)
+                        
+            print(f'[Table {table}] ... extracted!')   
+                
+        for row in ExtractTableData('movie_actors'):
             try:
-                row_properties = []
-                for j in range(len(EXPORT_DB[table])):
-                    row_properties.append({
-                        'type': EXPORT_DB[table][j]['field_type'],
-                        'value': row[j],
-                    })
-                row_cleaner = CleanDataFromTableRow(
-                    *row_properties
-                )
-                cleaned_row = row_cleaner.data
-                db_load = LoadDataToDjangoDataBase()
-                db_load.create_instance(
-                    cleaned_row, IMPORT_DB[i]['fields'],
-                    IMPORT_DB[i]['name']
-                )
+                movie = Movie.objects.get(id=row[0])
+                actor = Actor.objects.get(id=row[1])
+                movie.actors.add(actor)
+                movie.save()
             except Exception as E:
-               print(E)
+                print(E)
 
-        print(f'[Table {table}] ... extracted!')   
-            
-    for row in ExtractTableData('movie_actors'):
-        try:
-            movie = Movie.objects.get(id=row[0])
-            actor = Actor.objects.get(id=row[1])
-            movie.actors.add(actor)
-            movie.save()
-        except Exception as E:
-            print(E)
-
-    print(f'[Table movie_actors] ... extracted!')
+        print(f'[Table movie_actors] ... extracted!')

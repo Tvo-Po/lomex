@@ -3,10 +3,10 @@ version: '3.9'
 services:
   
   backend:
-    build: ./test
+    build: ./backend
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - ./test/:/usr/src/lomax/
+      - ./backend/:/usr/src/lomex/
     ports:
       - 8000:8000
     env_file:
@@ -22,8 +22,18 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=lomax
+      - POSTGRES_DB=lomex
     container_name: postgres_db
+  vue:
+    build: ./frontend
+    command: npm run serve
+    volumes:
+      - ./frontend/:/usr/src/lomex/
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    container_name: vue_frontend
 
 volumes:
   postgres_data:
