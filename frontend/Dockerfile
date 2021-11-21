@@ -1,13 +1,18 @@
-FROM node:lts-alpine
-
-RUN npm install -g http-server
+FROM node:16-alpine
 
 WORKDIR /usr/src/lomex
 
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm install --save axios
+ENV PATH /usr/src/lomex/node_modules/.bin:$PATH
 
-EXPOSE 8080
-CMD [ "http-server", "dist" ]
+COPY package*.json ./
+
+RUN npm cache clean --force
+
+RUN rm -rf node_modules && npm install
+RUN npm install @vue/cli@3.7.0 -g
+
+RUN npm update -g
+
+COPY . .
+
+CMD ["npm", "run", "serve"]
